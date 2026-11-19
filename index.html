@@ -323,7 +323,7 @@ var ORD = ['pedido','cobranca','lei','emenda','homenagem','outros'];
 var V = {}; D.vereadores.forEach(function(v){ V[v.slug]=v; });
 function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
 function norm(s){ return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase(); }
-function dt(s){ if(!s) return ''; var p=s.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function dt(s){ if(!s) return ''; var p=s.split('-'); return p.length===1 ? p[0] : (p.length<3 ? p[1]+'/'+p[0] : p[2]+'/'+p[1]+'/'+p[0]); }   // "2026" = só o ano; "2026-11" = só o mês
 // todo nome de vereador sai com a sigla do partido
 function nomeDe(a){ var v=V[a]; return v? v.nome+(v.partido?' ('+v.partido+')':'') : a; }
 function brl(n){ return (n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0}); }
@@ -473,7 +473,7 @@ buscar();
   var el=$('repLista');
   if(!D.repetidos.length){ el.innerHTML='<div class="vazio">Nenhum caso encontrado com a regra atual.</div>'; return; }
   var MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
-  function mes(s){ return MESES[+s.slice(5,7)-1]+' '+s.slice(0,4); }
+  function mes(s){ return s.length<7 ? s.slice(0,4) : MESES[+s.slice(5,7)-1]+' '+s.slice(0,4); }
   function bloco(r, k){
     var ds=r.i.map(function(i){return D.docs[i];});
     var dts=ds.map(function(d){return d.d;}).sort();
@@ -510,7 +510,7 @@ $('grupoVer').innerHTML = D.vereadores.filter(function(v){return total(v)>0;}).s
   var el=$('emBox'), ems=D.docs.filter(function(d){return d.g==='emenda';});
   var com=ems.filter(function(d){return d.em;});
   if(!ems.length){ el.innerHTML='<div class="vazio">Nenhuma emenda individual registrada.</div>'; return; }
-  if(!com.length){ el.innerHTML='<div class="vazio">'+ems.length+' emendas registradas. Os valores ainda estão sendo lidos dos documentos oficiais.</div>'; return; }
+  if(!com.length){ el.innerHTML='<div class="vazio">'+ems.length+' emenda(s) registrada(s) no sistema da Câmara. '+(D.sistema==='SAPL'?'Este site ainda não lê o valor de cada uma: abra a emenda no link para ver o documento.':'Os valores ainda estão sendo lidos dos documentos oficiais.')+'</div><ul class="lista">'+ems.map(function(d){return itemDoc(d);}).join('')+'</ul>'; return; }
   var cat={}, tot=0, porAno={}, linhasN=com.reduce(function(s,d){return s+d.em.length;},0);
   com.forEach(function(d){ d.em.forEach(function(e){ cat[e.c]=(cat[e.c]||0)+e.v; tot+=e.v; var a=d.d.slice(0,4); porAno[a]=(porAno[a]||0)+e.v; }); });
   var ks=Object.keys(cat).sort(function(a,b){return cat[b]-cat[a];}), mx=cat[ks[0]]||1;
@@ -693,10 +693,11 @@ function itemVot(x, tudo, meu){
 }
 (function(){
   if(!VT.length){ $('votosResumo').innerHTML='<div class="vazio">Os votos nominais ainda estão sendo coletados no sistema da Câmara.</div>'; $('abas').hidden=true; $('aba-proj').hidden=true; return; }
-  var div=VT.filter(function(x){ var s={}; Object.keys(x.v).forEach(function(k){s[x.v[k]]=1;}); return Object.keys(s).length>1; });
+  // dividida = entre quem votou (a favor, contra, abstenção) nem todos votaram igual; "não votou" não divide (o presidente em regra não vota)
+  var div=VT.filter(function(x){ var s={}; Object.keys(x.v).forEach(function(k){ var t=tipoVoto(x.v[k]); if(t!=='N') s[t]=1;}); return Object.keys(s).length>1; });
   var contra=VT.filter(function(x){ return Object.keys(x.v).some(function(k){return tipoVoto(x.v[k])==='C';}); });
   $('votosResumo').innerHTML='<div class="nums" style="margin:0 0 6px"><div class="num"><b>'+VT.length.toLocaleString('pt-BR')+'</b><small>votações nominais coletadas</small></div>'+
-    '<div class="num"><b>'+div.length.toLocaleString('pt-BR')+'</b><small>em que nem todos votaram igual</small></div>'+
+    '<div class="num"><b>'+div.length.toLocaleString('pt-BR')+'</b><small>em que nem todos votaram igual (sem contar quem não votou)</small></div>'+
     '<div class="num"><b>'+contra.length.toLocaleString('pt-BR')+'</b><small>com pelo menos um voto contra</small></div></div>';
   // abas
   $('abas').addEventListener('click',function(e){ var b=e.target.closest('button'); if(!b) return;
