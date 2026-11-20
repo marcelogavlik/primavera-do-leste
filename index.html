@@ -336,7 +336,7 @@ function itemDoc(d, comTag){
     '<div class="em">'+esc(d.e)+'</div>'+
     (d.em?d.em.map(function(e){return '<div class="em"><b>'+brl(e.v)+'</b> · '+esc(e.c)+(d.em.length>1&&e.ds?' — '+esc(e.ds):'')+'</div>';}).join(''):(d.g==='emenda'?'<div class="meta">Valor não localizado no documento oficial.</div>':''))+
     '<div class="meta">'+(d.a&&d.a.length?'Autor: '+esc(autores(d))+' · ':'')+(d.s?'Situação: '+esc(d.s)+' · ':'')+
-    '<a href="'+esc(d.u)+'" target="_blank" rel="noopener">ver na Câmara</a></div></li>';
+    '<a href="'+esc((D.u_base||'')+d.u)+'" target="_blank" rel="noopener">ver na Câmara</a></div></li>';
 }
 // lista com "mostrar mais"
 function paginar(el, itens, render, passo){
@@ -393,10 +393,11 @@ var emEx = D.vereadores.filter(function(v){return v.status==='exercicio';});
 $('atualizado').textContent = 'Dados coletados em '+(D.coletado_em?dt(D.coletado_em.slice(0,10))+' às '+D.coletado_em.slice(11):'—');
 var sesC = D.sessoes.filter(function(s){return (s.tipo==='Ordinária'||s.tipo==='Extraordinária')&&s.chamada>0;}).length;
 var cont = {}; D.docs.forEach(function(d){ cont[d.g]=(cont[d.g]||0)+1; });
+var TEM_PRES = D.vereadores.some(function(v){return v.pres;});   // algumas casas não publicam presença (Cuiabá, Assembleia)
 $('nums').innerHTML = [
-  [emEx.length,'vereadores em exercício'],[sesC,'sessões com chamada registrada'],
+  [emEx.length,'vereadores em exercício']].concat(TEM_PRES?[[sesC,'sessões com chamada registrada']]:[]).concat([
   [cont.pedido||0,'pedidos para os bairros'],[cont.lei||0,'propostas de lei'],[cont.homenagem||0,'homenagens']
-].map(function(x){return '<div class="num"><b>'+x[0].toLocaleString('pt-BR')+'</b><small>'+x[1]+'</small></div>';}).join('');
+]).map(function(x){return '<div class="num"><b>'+x[0].toLocaleString('pt-BR')+'</b><small>'+x[1]+'</small></div>';}).join('');
 $('tituloVer').textContent = 'Os '+emEx.length+' vereadores';
 
 // secoes sem dado nesta cidade saem da pagina e do menu
@@ -405,6 +406,7 @@ if(!D.gastos) esconder('gastos');
 if(!D.docs.some(function(d){return d.g==='emenda';})) esconder('emendas');
 if(!(D.executivo||[]).length) esconder('prefeitura');
 if(!(D.votacoes||[]).length) esconder('votos');
+if(!TEM_PRES) esconder('faltas');
 
 // ---------- contador: salarios pagos desde a posse (estimativa a partir do quadro oficial)
 (function(){
@@ -445,7 +447,7 @@ $('bairrosTop').addEventListener('click',function(e){ var b=e.target.closest('bu
   q.value = q.value===b.dataset.b ? '' : b.dataset.b; buscar(); });
 function marcarBairro(){ var v=$('q').value; Array.prototype.forEach.call($('bairrosTop').children,function(b){ b.classList.toggle('on', b.dataset.b===v); }); }
 function cidadeInteira(){
-  function caixa(tit, ks, nome, val){ return '<div class="resumo"><h5>'+tit+'</h5>'+ks.map(function(k){return '<div><span>'+nome(k)+'</span><b>'+val(k).toLocaleString('pt-BR')+'</b></div>';}).join('')+'</div>'; }
+  function caixa(tit, ks, nome, val){ if(!ks.length) return ''; return '<div class="resumo"><h5>'+tit+'</h5>'+ks.map(function(k){return '<div><span>'+nome(k)+'</span><b>'+val(k).toLocaleString('pt-BR')+'</b></div>';}).join('')+'</div>'; }
   return '<p style="margin:14px 0 0"><b>'+D.docs.length.toLocaleString('pt-BR')+'</b> propostas dos vereadores para a cidade inteira desde janeiro de 2025, sendo <b>'+pedidos.length.toLocaleString('pt-BR')+'</b> pedidos de melhoria nos bairros.</p>'+
     '<div class="resumos">'+
       caixa('Quem mais propôs', topo(aCont,5), function(a){return '<button class="link" data-v="'+esc(a)+'" style="text-align:left">'+esc(nomeDe(a))+'</button>';}, function(a){return aCont[a];})+
@@ -530,7 +532,7 @@ $('grupoVer').innerHTML = D.vereadores.filter(function(v){return total(v)>0;}).s
     var r=linhas.filter(function(x){ return (!f||x.e.c===f)&&q.every(function(t){return x._n.indexOf(t)>=0;}); });
     var soma=r.reduce(function(s,x){return s+x.e.v;},0);
     $('emLista').innerHTML='<p class="nota">'+r.length+' emenda'+(r.length===1?'':'s')+', somando <b>'+brl(soma)+'</b>, da maior para a menor.</p><div id="emL2"></div>';
-    paginar($('emL2'), r, function(x){ return '<li><div class="meta">'+dt(x.d.d)+' · '+esc(x.d.n)+' · '+esc(x.e.c)+'</div><div class="em"><b>'+brl(x.e.v)+'</b> — '+esc(x.e.ds||x.d.e)+'</div><div class="meta">Autor: '+esc(autores(x.d))+(x.d.s?' · Situação na Câmara: '+esc(x.d.s):'')+' · <a href="'+esc(x.d.u)+'" target="_blank" rel="noopener">ver na Câmara</a></div></li>'; }, 15); }
+    paginar($('emL2'), r, function(x){ return '<li><div class="meta">'+dt(x.d.d)+' · '+esc(x.d.n)+' · '+esc(x.e.c)+'</div><div class="em"><b>'+brl(x.e.v)+'</b> — '+esc(x.e.ds||x.d.e)+'</div><div class="meta">Autor: '+esc(autores(x.d))+(x.d.s?' · Situação na Câmara: '+esc(x.d.s):'')+' · <a href="'+esc((D.u_base||'')+x.d.u)+'" target="_blank" rel="noopener">ver na Câmara</a></div></li>'; }, 15); }
   var te; $('qe').addEventListener('input',function(){clearTimeout(te);te=setTimeout(lista,180);}); $('fe').addEventListener('change',lista); lista();
 })();
 
@@ -585,6 +587,7 @@ var partidos={}; D.vereadores.forEach(function(v){ if(v.partido) partidos[v.part
 $('fPartido').innerHTML='<option value="">Todos os partidos</option>'+Object.keys(partidos).sort().map(function(p){return '<option>'+esc(p)+'</option>';}).join('');
 function faltas(v){ return v.pres? v.pres.sessoes-v.pres.presente : 0; }
 function presBloco(pr){
+  if(!TEM_PRES) return '';   // a casa não publica presença em formato legível
   if(!pr||!pr.sessoes) return '<div class="pres"><span>Presença: o sistema da Câmara não tem chamada com o nome dele.</span></div>';
   var p=Math.round(100*pr.presente/pr.sessoes), just=pr.faltas.filter(function(x){return norm(x.m).indexOf('justific')>=0;}).length, aus=pr.faltas.length-just;
   return '<div class="pres'+(p<85?' baixa':'')+'"><b>'+p+'%</b><span>de presença · '+pr.presente+' de '+pr.sessoes+' sessões<br>'+aus+' falta'+(aus===1?'':'s')+' sem justificativa · '+just+' justificada'+(just===1?'':'s')+'</span></div>';
@@ -630,8 +633,9 @@ function abrir(slug){
     ' · <a href="'+esc(v.url)+'" target="_blank" rel="noopener">ficha oficial na Câmara</a>'+
     (v.email&&v.status==='exercicio'?' · e-mail (o publicado na ficha oficial): <a href="mailto:'+esc(v.email)+'">'+esc(v.email)+'</a>':'')+'</p>';
   if(v.tse) h+=urna(v).replace('class="urna"','class="urna" style="margin:-6px 0 12px"').replace('votos em 2024','votos na eleição de 2024 (resultado oficial do TSE)');
-  h+='<h3>Presença</h3>';
-  if(pr){
+  if(TEM_PRES) h+='<h3>Presença</h3>';
+  if(!TEM_PRES){}
+  else if(pr){
     h+=presBloco(pr)+'<p>Presente em <b>'+pr.presente+'</b> de <b>'+pr.sessoes+'</b> sessões ordinárias e extraordinárias em que o nome dele aparece na chamada.</p>';
     if(pr.faltas.length){ h+='<details><summary><span>Registros diferentes de “Presente”</span><span class="cnt">'+pr.faltas.length+'</span></summary><div class="dentro"><ul class="lista">'+
       pr.faltas.map(function(f){return '<li><div class="meta">'+dt(f.d)+'</div><div class="em">'+esc(f.s)+' — <b>'+esc(f.m)+'</b></div><div class="meta"><a href="'+esc(f.u)+'" target="_blank" rel="noopener">ver a sessão na Câmara</a></div></li>';}).join('')+'</ul></div></details>'; }
@@ -792,7 +796,8 @@ function itemVot(x, tudo, meu){
   var SAPL=D.sistema==='SAPL';
   var sit=D.situacoes_presenca||{};
   var h='<p>Tudo neste site foi coletado automaticamente do site oficial da <a href="'+esc(D.fonte)+'" target="_blank" rel="noopener">Câmara Municipal de Primavera do Leste</a>. Nada é digitado à mão. Cada proposta, sessão e vereador tem um link para a página oficial, para você conferir.</p>'+
-  '<details><summary><span>Presença</span></summary><div class="dentro"><p>Contamos só as sessões ordinárias e extraordinárias já realizadas, de janeiro de 2025 em diante, em que a Câmara publicou a chamada. Sessões solenes não entram.</p>'+
+  (!TEM_PRES?'<details><summary><span>Presença e votos</span></summary><div class="dentro"><p>Esta casa não publica a lista de presença das sessões nem o voto de cada um em formato que dê para coletar automaticamente (só em PDF escaneado ou sem arquivo). Por isso o site não mostra faltas nem votos aqui. Quando passar a publicar, entra na atualização seguinte.</p></div></details>':'')+
+  '<details'+(TEM_PRES?'':' hidden')+'><summary><span>Presença</span></summary><div class="dentro"><p>Contamos só as sessões ordinárias e extraordinárias já realizadas, de janeiro de 2025 em diante, em que a Câmara publicou a chamada. Sessões solenes não entram.</p>'+
     (SAPL?'<p>O sistema da Câmara (SAPL) registra a lista de quem estava <b>presente</b> em cada sessão. Quem tinha mandato na data da sessão e não está na lista conta como falta. Se a Câmara registrou justificativa de ausência para aquela sessão, conta como falta justificada. '+(D.sessoes_sem_chamada?D.sessoes_sem_chamada+' sessão(ões) sem nenhuma presença registrada ficaram de fora.':'')+'</p>'+
       '<p>O sistema não registra licenças. Para não contar licença como falta, o site usa duas regras iguais para todos: (1) só conta o período entre a primeira e a última presença registrada de cada vereador, o que cobre o suplente que atuou só por um tempo; (2) <b>5 ou mais faltas seguidas sem justificativa</b> são tratadas como licença ou afastamento e não entram na conta.'+
       ((D.afastamentos||[]).length?' Casos tratados assim: '+D.afastamentos.map(function(a){return esc(nomeDe(a.slug)===a.slug?a.nome:nomeDe(a.slug))+' ('+a.sessoes+' sessões, de '+dt(a.de)+' a '+dt(a.ate)+')';}).join('; ')+'.':'')+'</p>'
